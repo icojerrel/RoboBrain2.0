@@ -1,0 +1,12 @@
+# PersonalAI Requirements
+# Installeer met: pip install -r requirements.txt
+
+# Telegram Bot
+python-telegram-bot>=20.0
+
+# Web Interface (optioneel)
+gradio>=4.0.0
+
+# Basis requirements zijn in hoofdproject
+# Zorg dat je eerst de hoofdproject requirements installeert:
+# pip install -r ../requirements.txt
