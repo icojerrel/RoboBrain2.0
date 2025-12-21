@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  personalai-telegram:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: personalai:latest
+    container_name: personalai-telegram
+    restart: unless-stopped
+
+    # GPU support (NVIDIA)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+    # Environment variables
+    env_file:
+      - .env
+
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+
+    # Volumes voor persistent data
+    volumes:
+      - ./data:/app/PersonalAI/data
+      - huggingface-cache:/root/.cache/huggingface
+      - ./result:/app/result
+
+    # Command
+    command: python main.py telegram
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "main.py", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  personalai-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: personalai:latest
+    container_name: personalai-web
+    restart: unless-stopped
+
+    # GPU support
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+    # Environment
+    env_file:
+      - .env
+
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+
+    # Volumes
+    volumes:
+      - ./data:/app/PersonalAI/data
+      - huggingface-cache:/root/.cache/huggingface
+      - ./result:/app/result
+
+    # Ports
+    ports:
+      - "7860:7860"
+
+    # Command
+    command: python main.py web
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  huggingface-cache:
+    driver: local

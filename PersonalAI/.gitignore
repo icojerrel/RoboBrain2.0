@@ -1,0 +1,52 @@
+# PersonalAI specific gitignore
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Data directories
+data/
+result/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+
+# OS
+.DS_Store
+Thumbs.db
+.directory
+
+# Jupyter
+.ipynb_checkpoints
+
+# Model cache (te groot voor git)
+.cache/
+models/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Docker
+*.pid
+*.sock
