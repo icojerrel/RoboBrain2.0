@@ -28,6 +28,7 @@ from core.brain import get_brain
 from core.memory import get_memory, get_preferences
 from modules.vision import get_vision_assistant
 from modules.xray import get_xray_analyzer
+from modules.drone_interface import get_drone_interface
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -53,6 +54,13 @@ class PersonalAIBot:
                 self.xray = get_xray_analyzer()
             except:
                 logger.warning("X-ray module niet beschikbaar")
+
+        # Drone interface
+        try:
+            self.drone = get_drone_interface()
+        except Exception as e:
+            logger.warning(f"Drone interface niet beschikbaar: {e}")
+            self.drone = None
 
         self.app = Application.builder().token(token).build()
         self._setup_handlers()
@@ -82,6 +90,21 @@ class PersonalAIBot:
         if self.xray:
             self.app.add_handler(CommandHandler("xray", self.cmd_xray))
             self.app.add_handler(CommandHandler("anatomy", self.cmd_anatomy))
+
+        # Drone commands (indien beschikbaar)
+        if self.drone:
+            self.app.add_handler(CommandHandler("drone_help", self.cmd_drone_help))
+            self.app.add_handler(CommandHandler("drone_status", self.cmd_drone_status))
+            self.app.add_handler(CommandHandler("drone_arm", self.cmd_drone_arm))
+            self.app.add_handler(CommandHandler("drone_disarm", self.cmd_drone_disarm))
+            self.app.add_handler(CommandHandler("drone_takeoff", self.cmd_drone_takeoff))
+            self.app.add_handler(CommandHandler("drone_land", self.cmd_drone_land))
+            self.app.add_handler(CommandHandler("drone_goto", self.cmd_drone_goto))
+            self.app.add_handler(CommandHandler("drone_waypoint", self.cmd_drone_waypoint))
+            self.app.add_handler(CommandHandler("drone_mission", self.cmd_drone_mission))
+            self.app.add_handler(CommandHandler("drone_clear", self.cmd_drone_clear))
+            self.app.add_handler(CommandHandler("drone_emergency", self.cmd_drone_emergency))
+            self.app.add_handler(CommandHandler("drone_render", self.cmd_drone_render))
 
         # Message handlers
         self.app.add_handler(MessageHandler(
@@ -281,6 +304,96 @@ Klik op de knoppen om aan/uit te zetten:
             f"{config.MEDICAL_DISCLAIMER}\n\n"
             "🔬 Stuur een röntgenfoto voor educatieve analyse!"
         )
+
+    # Drone commands
+    async def cmd_drone_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Drone help command"""
+        if not self.drone:
+            await update.message.reply_text("❌ Drone module niet beschikbaar")
+            return
+        await update.message.reply_text(self.drone.cmd_help())
+
+    async def cmd_drone_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Drone status"""
+        if not self.drone:
+            return
+        await update.message.reply_text(self.drone.cmd_status())
+
+    async def cmd_drone_arm(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Arm drone"""
+        if not self.drone:
+            return
+        await update.message.reply_text(self.drone.cmd_arm())
+
+    async def cmd_drone_disarm(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Disarm drone"""
+        if not self.drone:
+            return
+        await update.message.reply_text(self.drone.cmd_disarm())
+
+    async def cmd_drone_takeoff(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Takeoff command"""
+        if not self.drone:
+            return
+        altitude = float(context.args[0]) if context.args else 15.0
+        await update.message.reply_text(self.drone.cmd_takeoff(altitude))
+
+    async def cmd_drone_land(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Land drone"""
+        if not self.drone:
+            return
+        await update.message.reply_text(self.drone.cmd_land())
+
+    async def cmd_drone_goto(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Goto position"""
+        if not self.drone:
+            return
+        if len(context.args) < 2:
+            await update.message.reply_text("Usage: /drone_goto <x> <y> [z]")
+            return
+        x = float(context.args[0])
+        y = float(context.args[1])
+        z = float(context.args[2]) if len(context.args) > 2 else None
+        await update.message.reply_text(self.drone.cmd_goto(x, y, z))
+
+    async def cmd_drone_waypoint(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Add waypoint"""
+        if not self.drone:
+            return
+        if len(context.args) < 2:
+            await update.message.reply_text("Usage: /drone_waypoint <x> <y> [z]")
+            return
+        x = float(context.args[0])
+        y = float(context.args[1])
+        z = float(context.args[2]) if len(context.args) > 2 else 15.0
+        await update.message.reply_text(self.drone.cmd_waypoint(x, y, z))
+
+    async def cmd_drone_mission(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Execute mission"""
+        if not self.drone:
+            return
+        await update.message.reply_text(self.drone.cmd_mission())
+
+    async def cmd_drone_clear(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Clear waypoints"""
+        if not self.drone:
+            return
+        await update.message.reply_text(self.drone.cmd_clear_waypoints())
+
+    async def cmd_drone_emergency(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Emergency stop"""
+        if not self.drone:
+            return
+        await update.message.reply_text(self.drone.cmd_emergency())
+
+    async def cmd_drone_render(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Render world view"""
+        if not self.drone:
+            return
+        output_path = self.drone.cmd_render()
+        # Send as photo
+        with open(output_path, 'rb') as photo:
+            await update.message.reply_photo(photo, caption="🚁 Drone World View")
 
     async def handle_photo(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle foto uploads"""
