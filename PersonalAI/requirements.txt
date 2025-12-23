@@ -7,6 +7,11 @@ python-telegram-bot>=20.0
 # Web Interface (optioneel)
 gradio>=4.0.0
 
+# Camera Monitoring
+opencv-python>=4.7.0
+numpy>=1.26.0
+pillow>=11.0.0
+
 # Basis requirements zijn in hoofdproject
 # Zorg dat je eerst de hoofdproject requirements installeert:
 # pip install -r ../requirements.txt
