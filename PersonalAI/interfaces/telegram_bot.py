@@ -29,6 +29,7 @@ from core.memory import get_memory, get_preferences
 from modules.vision import get_vision_assistant
 from modules.xray import get_xray_analyzer
 from modules.drone_interface import get_drone_interface
+from modules.dashcam_ai import get_dashcam, RecordingMode, EventType
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -61,6 +62,13 @@ class PersonalAIBot:
         except Exception as e:
             logger.warning(f"Drone interface niet beschikbaar: {e}")
             self.drone = None
+
+        # Dashcam
+        try:
+            self.dashcam = get_dashcam(front_camera="0")
+        except Exception as e:
+            logger.warning(f"Dashcam niet beschikbaar: {e}")
+            self.dashcam = None
 
         self.app = Application.builder().token(token).build()
         self._setup_handlers()
@@ -105,6 +113,19 @@ class PersonalAIBot:
             self.app.add_handler(CommandHandler("drone_clear", self.cmd_drone_clear))
             self.app.add_handler(CommandHandler("drone_emergency", self.cmd_drone_emergency))
             self.app.add_handler(CommandHandler("drone_render", self.cmd_drone_render))
+
+        # Dashcam commands (indien beschikbaar)
+        if self.dashcam:
+            self.app.add_handler(CommandHandler("dashcam_help", self.cmd_dashcam_help))
+            self.app.add_handler(CommandHandler("dashcam_status", self.cmd_dashcam_status))
+            self.app.add_handler(CommandHandler("dashcam_start", self.cmd_dashcam_start))
+            self.app.add_handler(CommandHandler("dashcam_stop", self.cmd_dashcam_stop))
+            self.app.add_handler(CommandHandler("dashcam_monitor", self.cmd_dashcam_monitor))
+            self.app.add_handler(CommandHandler("dashcam_events", self.cmd_dashcam_events))
+            self.app.add_handler(CommandHandler("dashcam_incidents", self.cmd_dashcam_incidents))
+            self.app.add_handler(CommandHandler("dashcam_plates", self.cmd_dashcam_plates))
+            self.app.add_handler(CommandHandler("dashcam_stats", self.cmd_dashcam_stats))
+            self.app.add_handler(CommandHandler("dashcam_export", self.cmd_dashcam_export))
 
         # Message handlers
         self.app.add_handler(MessageHandler(
@@ -167,6 +188,14 @@ Of stuur gewoon een foto met een vraag!
 🔬 RÖNTGEN (EDUCATIEF):
 /xray - Analyseer röntgenfoto
 /anatomy <structuur> - Identificeer anatomie
+
+🚗 DASHCAM:
+/dashcam_help - Dashcam commands
+/dashcam_start - Start recording
+/dashcam_status - Status & stats
+
+🚁 DRONE:
+/drone_help - Drone simulator commands
 
 ⚙️ SYSTEEM:
 /info - Systeeminformatie
@@ -394,6 +423,238 @@ Klik op de knoppen om aan/uit te zetten:
         # Send as photo
         with open(output_path, 'rb') as photo:
             await update.message.reply_photo(photo, caption="🚁 Drone World View")
+
+    # ===== DASHCAM COMMANDS =====
+
+    async def cmd_dashcam_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Dashcam help"""
+        if not self.dashcam:
+            return
+        help_text = """
+🚗 PersonalAI Smart Dashcam Commands
+
+**Recording:**
+/dashcam_start - Start continuous recording
+/dashcam_stop - Stop recording
+/dashcam_monitor - Monitoring zonder opname
+
+**Info:**
+/dashcam_status - Huidige status
+/dashcam_stats - Statistieken
+/dashcam_events - Recente events (10)
+/dashcam_incidents - Kritieke incidenten
+/dashcam_plates - Gedetecteerde kentekens
+/dashcam_export - Exporteer events naar CSV
+
+**Features:**
+✅ Automatic incident detection
+✅ License plate recognition (ANPR)
+✅ Traffic sign detection
+✅ Lane departure warnings
+✅ Driver monitoring (if enabled)
+✅ GPS tracking (if enabled)
+        """
+        await update.message.reply_text(help_text)
+
+    async def cmd_dashcam_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Dashcam status"""
+        if not self.dashcam:
+            return
+        stats = self.dashcam.get_statistics()
+
+        message = f"🚗 Dashcam Status\n\n"
+        message += f"Recording: {'✅ Actief' if stats['is_recording'] else '❌ Uit'}\n"
+        message += f"Monitoring: {'✅ Actief' if stats['is_monitoring'] else '❌ Uit'}\n"
+        message += f"Mode: {stats['recording_mode']}\n"
+        message += f"GPS: {'✅ Enabled' if stats['gps_enabled'] else '❌ Disabled'}\n"
+        message += f"Driver Monitoring: {'✅ Actief' if stats['driver_monitoring'] else '❌ Uit'}\n\n"
+        message += f"📊 Total Events: {stats['total_events']}\n"
+
+        await update.message.reply_text(message)
+
+    async def cmd_dashcam_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Start dashcam recording"""
+        if not self.dashcam:
+            return
+
+        # Parse mode from args
+        mode = RecordingMode.CONTINUOUS
+        if context.args:
+            mode_arg = context.args[0].lower()
+            if mode_arg == "event":
+                mode = RecordingMode.EVENT_ONLY
+            elif mode_arg == "parking":
+                mode = RecordingMode.PARKING
+
+        success = self.dashcam.start_recording(mode)
+
+        if success:
+            await update.message.reply_text(
+                f"✅ Dashcam recording gestart!\n"
+                f"Mode: {mode.value}\n\n"
+                f"AI monitort nu automatisch je rit.\n"
+                f"Events worden automatisch gedetecteerd."
+            )
+        else:
+            await update.message.reply_text("❌ Kon dashcam niet starten")
+
+    async def cmd_dashcam_stop(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Stop dashcam"""
+        if not self.dashcam:
+            return
+
+        self.dashcam.stop_recording()
+        await update.message.reply_text("⏹️ Dashcam gestopt")
+
+    async def cmd_dashcam_monitor(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Start monitoring zonder recording"""
+        if not self.dashcam:
+            return
+
+        success = self.dashcam.start_monitoring()
+
+        if success:
+            await update.message.reply_text(
+                "👁️ Monitoring gestart (zonder video opname)\n"
+                "Events en snapshots worden wel gelogd."
+            )
+        else:
+            await update.message.reply_text("❌ Kon monitoring niet starten")
+
+    async def cmd_dashcam_events(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Recente events"""
+        if not self.dashcam:
+            return
+
+        limit = 10
+        if context.args and context.args[0].isdigit():
+            limit = int(context.args[0])
+
+        events = self.dashcam.get_events(limit=limit)
+
+        if not events:
+            await update.message.reply_text("📊 Geen events gevonden")
+            return
+
+        message = f"📊 Recente Events ({len(events)}):\n\n"
+
+        for i, event in enumerate(reversed(events), 1):
+            message += f"{i}. **{event.event_type.value}**\n"
+            message += f"   ⏰ {event.timestamp.strftime('%H:%M:%S')}\n"
+            message += f"   🎯 Severity: {event.severity}\n"
+            message += f"   📝 {event.description}\n"
+
+            if event.speed:
+                message += f"   🚗 Speed: {event.speed:.1f} km/h\n"
+
+            message += "\n"
+
+        await update.message.reply_text(message)
+
+    async def cmd_dashcam_incidents(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Kritieke incidenten"""
+        if not self.dashcam:
+            return
+
+        critical = self.dashcam.get_events(severity="critical", limit=10)
+        high = self.dashcam.get_events(severity="high", limit=10)
+
+        incidents = critical + high
+
+        if not incidents:
+            await update.message.reply_text("✅ Geen incidenten")
+            return
+
+        message = f"🚨 Incidenten ({len(incidents)}):\n\n"
+
+        for event in incidents[-5:]:  # Last 5
+            message += f"**{event.event_type.value}**\n"
+            message += f"⏰ {event.timestamp.strftime('%Y-%m-%d %H:%M')}\n"
+            message += f"❗ {event.severity.upper()}\n"
+            message += f"📝 {event.description}\n"
+
+            if event.video_clip_path:
+                message += f"🎥 Clip: {Path(event.video_clip_path).name}\n"
+
+            message += "\n"
+
+            # Send snapshot if available
+            if event.snapshot_path and Path(event.snapshot_path).exists():
+                with open(event.snapshot_path, 'rb') as photo:
+                    await update.message.reply_photo(
+                        photo,
+                        caption=f"{event.event_type.value} - {event.description}"
+                    )
+
+        await update.message.reply_text(message)
+
+    async def cmd_dashcam_plates(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Gedetecteerde kentekens"""
+        if not self.dashcam:
+            return
+
+        plate_events = self.dashcam.get_events(
+            event_type=EventType.LICENSE_PLATE_DETECTED,
+            limit=20
+        )
+
+        if not plate_events:
+            await update.message.reply_text("🚗 Geen kentekens gedetecteerd")
+            return
+
+        message = f"🚗 Kentekens ({len(plate_events)}):\n\n"
+
+        for event in plate_events[-10:]:  # Last 10
+            plate = event.metadata.get('plate', 'Unknown')
+            message += f"• {plate}\n"
+            message += f"  ⏰ {event.timestamp.strftime('%H:%M:%S')}\n"
+
+            if event.location:
+                lat = event.location.get('latitude', 0)
+                lon = event.location.get('longitude', 0)
+                message += f"  📍 {lat:.4f}, {lon:.4f}\n"
+
+            message += "\n"
+
+        await update.message.reply_text(message)
+
+    async def cmd_dashcam_stats(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Dashcam statistieken"""
+        if not self.dashcam:
+            return
+
+        stats = self.dashcam.get_statistics()
+
+        message = f"📊 Dashcam Statistieken\n\n"
+        message += f"**Totaal:** {stats['total_events']} events\n\n"
+
+        message += "**Per Type:**\n"
+        for etype, count in stats['events_by_type'].items():
+            message += f"  • {etype}: {count}\n"
+
+        message += "\n**Per Severity:**\n"
+        for severity, count in stats['events_by_severity'].items():
+            message += f"  • {severity}: {count}\n"
+
+        await update.message.reply_text(message)
+
+    async def cmd_dashcam_export(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Exporteer events"""
+        if not self.dashcam:
+            return
+
+        export_path = config.DATA_DIR / "dashcam" / "events_export.csv"
+        self.dashcam.export_events(str(export_path), format="csv")
+
+        # Send file
+        with open(export_path, 'rb') as file:
+            await update.message.reply_document(
+                document=file,
+                filename="dashcam_events.csv",
+                caption="📊 Dashcam events export"
+            )
+
+    # ===== END DASHCAM COMMANDS =====
 
     async def handle_photo(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle foto uploads"""
