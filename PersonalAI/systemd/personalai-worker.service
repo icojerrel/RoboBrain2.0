@@ -1,0 +1,30 @@
+[Unit]
+Description=PersonalAI Autonomous Worker
+After=network.target
+
+[Service]
+Type=simple
+User=personalai
+WorkingDirectory=/home/personalai/PersonalAI
+Environment="PATH=/home/personalai/PersonalAI/venv/bin:/usr/bin"
+ExecStart=/home/personalai/PersonalAI/venv/bin/python3 core/autonomous_worker.py
+
+# Restart on failure
+Restart=on-failure
+RestartSec=30
+
+# Resource limits
+MemoryLimit=8G
+CPUQuota=200%
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=personalai-worker
+
+[Install]
+WantedBy=multi-user.target

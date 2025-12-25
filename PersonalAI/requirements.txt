@@ -12,6 +12,10 @@ opencv-python>=4.7.0
 numpy>=1.26.0
 pillow>=11.0.0
 
+# Autonomous Mode
+qdrant-client>=1.7.0  # Vector database for long-term memory
+flask>=3.0.0  # Dashcam bridge server
+
 # Basis requirements zijn in hoofdproject
 # Zorg dat je eerst de hoofdproject requirements installeert:
 # pip install -r ../requirements.txt

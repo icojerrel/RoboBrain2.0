@@ -1,0 +1,15 @@
+[Unit]
+Description=PersonalAI Autonomous Supervisor Check
+After=network.target
+
+[Service]
+Type=oneshot
+User=personalai
+WorkingDirectory=/home/personalai/PersonalAI
+Environment="PATH=/home/personalai/PersonalAI/venv/bin:/usr/bin"
+ExecStart=/home/personalai/PersonalAI/venv/bin/python3 core/autonomous_supervisor.py
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=personalai-supervisor
