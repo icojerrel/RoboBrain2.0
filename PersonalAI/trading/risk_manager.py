@@ -4,7 +4,7 @@ Risk Management System
 Manages trading risk, position sizing, and safety limits
 """
 
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Tuple
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 import logging

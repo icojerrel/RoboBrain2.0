@@ -70,6 +70,16 @@ class PersonalAIBot:
             logger.warning(f"Dashcam niet beschikbaar: {e}")
             self.dashcam = None
 
+        # Autonomous Trader
+        try:
+            from trading.autonomous_trader import AutonomousTrader
+            self.trader = AutonomousTrader(mode="paper")  # Start in safe paper mode
+            self.trader_thread = None  # Will hold trader thread when running
+        except Exception as e:
+            logger.warning(f"Autonomous Trader niet beschikbaar: {e}")
+            self.trader = None
+            self.trader_thread = None
+
         self.app = Application.builder().token(token).build()
         self._setup_handlers()
 
@@ -126,6 +136,16 @@ class PersonalAIBot:
             self.app.add_handler(CommandHandler("dashcam_plates", self.cmd_dashcam_plates))
             self.app.add_handler(CommandHandler("dashcam_stats", self.cmd_dashcam_stats))
             self.app.add_handler(CommandHandler("dashcam_export", self.cmd_dashcam_export))
+
+        # Trader commands (indien beschikbaar)
+        if self.trader:
+            self.app.add_handler(CommandHandler("trader_help", self.cmd_trader_help))
+            self.app.add_handler(CommandHandler("trader_start", self.cmd_trader_start))
+            self.app.add_handler(CommandHandler("trader_stop", self.cmd_trader_stop))
+            self.app.add_handler(CommandHandler("trader_status", self.cmd_trader_status))
+            self.app.add_handler(CommandHandler("trader_stats", self.cmd_trader_stats))
+            self.app.add_handler(CommandHandler("trader_strategies", self.cmd_trader_strategies))
+            self.app.add_handler(CommandHandler("trader_market", self.cmd_trader_market))
 
         # Message handlers
         self.app.add_handler(MessageHandler(
@@ -193,6 +213,11 @@ Of stuur gewoon een foto met een vraag!
 /dashcam_help - Dashcam commands
 /dashcam_start - Start recording
 /dashcam_status - Status & stats
+
+📈 TRADING:
+/trader_help - Trading commands
+/trader_start - Start autonomous trader
+/trader_status - Trader status & P&L
 
 🚁 DRONE:
 /drone_help - Drone simulator commands
@@ -655,6 +680,266 @@ Klik op de knoppen om aan/uit te zetten:
             )
 
     # ===== END DASHCAM COMMANDS =====
+
+    # ===== TRADER COMMANDS =====
+
+    async def cmd_trader_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Trader help"""
+        if not self.trader:
+            return
+        help_text = """
+📈 PersonalAI Autonomous Trader Commands
+
+**Trading:**
+/trader_start [paper|live] - Start autonomous trader
+/trader_stop - Stop trader
+/trader_status - Current status & positions
+
+**Analytics:**
+/trader_stats - Performance statistics
+/trader_strategies - List strategies & performance
+/trader_market - Current market data
+
+**Features:**
+✅ MT5 Integration (MNQ futures)
+✅ Self-generating strategies
+✅ Autonomous backtesting
+✅ Risk management (1% per trade, 3% daily max)
+✅ Paper trading mode (safe testing)
+✅ Self-learning from P&L
+
+⚠️ **RISK WARNING:**
+Trading involves substantial risk of loss.
+Start with paper mode for testing!
+        """
+        await update.message.reply_text(help_text)
+
+    async def cmd_trader_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Start autonomous trader"""
+        if not self.trader:
+            return
+
+        # Check if already running
+        if self.trader_thread and self.trader_thread.is_alive():
+            await update.message.reply_text("⚠️ Trader is al actief!\nGebruik /trader_stop om te stoppen.")
+            return
+
+        # Parse mode from args (paper or live)
+        mode = "paper"  # Default safe mode
+        if context.args:
+            mode_arg = context.args[0].lower()
+            if mode_arg in ["paper", "live"]:
+                mode = mode_arg
+
+        # Warning for live mode
+        if mode == "live":
+            await update.message.reply_text(
+                "⚠️ **LIVE TRADING MODE**\n\n"
+                "Dit gebruikt ECHT GELD!\n"
+                "Zeker weten? Stuur nogmaals:\n"
+                "/trader_start live_confirmed"
+            )
+            return
+
+        # Recreate trader with selected mode
+        from trading.autonomous_trader import AutonomousTrader
+        self.trader = AutonomousTrader(mode=mode)
+
+        # Start trader in background thread
+        import threading
+        self.trader_thread = threading.Thread(target=self.trader.start, daemon=True)
+        self.trader_thread.start()
+
+        await update.message.reply_text(
+            f"✅ Autonomous Trader gestart!\n\n"
+            f"Mode: {mode.upper()}\n"
+            f"Symbol: MNQ (Micro E-mini NASDAQ)\n"
+            f"Cycle: 5 minutes\n\n"
+            f"Decision Loop:\n"
+            f"  1. READ - Market data + memory\n"
+            f"  2. QUERY - Successful strategies\n"
+            f"  3. THINK - Generate/select strategy\n"
+            f"  4. ACT - Backtest → Trade\n"
+            f"  5. RECORD - Results to memory\n"
+            f"  6. LEARN - Improve from P&L\n\n"
+            f"Gebruik /trader_status voor live updates."
+        )
+
+    async def cmd_trader_stop(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Stop trader"""
+        if not self.trader:
+            return
+
+        if not self.trader_thread or not self.trader_thread.is_alive():
+            await update.message.reply_text("ℹ️ Trader is niet actief")
+            return
+
+        # Stop trader
+        self.trader.running = False
+
+        await update.message.reply_text("⏹️ Autonomous Trader gestopt")
+
+    async def cmd_trader_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Trader status"""
+        if not self.trader:
+            return
+
+        # Check if connected to MT5
+        if not self.trader.mt5.connect():
+            await update.message.reply_text("❌ Niet verbonden met MT5")
+            return
+
+        # Get account info
+        account = self.trader.mt5.get_account_info()
+        positions = self.trader.mt5.get_positions()
+        price = self.trader.mt5.get_current_price()
+
+        # Build status message
+        message = f"📈 Trader Status\n\n"
+        message += f"Mode: {self.trader.mode.upper()}\n"
+        message += f"Running: {'✅ Actief' if self.trader.running else '❌ Gestopt'}\n"
+        message += f"Cycles: {self.trader.cycle_count}\n\n"
+
+        if account:
+            message += f"💰 Account:\n"
+            message += f"  Balance: ${account['balance']:.2f}\n"
+            message += f"  Equity: ${account['equity']:.2f}\n"
+            message += f"  Profit: ${account['profit']:.2f}\n\n"
+
+        if price:
+            message += f"📊 MNQ Price:\n"
+            message += f"  Bid: ${price['bid']:.2f}\n"
+            message += f"  Ask: ${price['ask']:.2f}\n\n"
+
+        message += f"📍 Positions: {len(positions)}\n"
+
+        if positions:
+            message += "\nOpen positions:\n"
+            for pos in positions:
+                message += f"  • {pos.type} {pos.volume} @ ${pos.open_price:.2f}\n"
+                message += f"    P&L: ${pos.profit:.2f}\n"
+
+        if self.trader.current_strategy:
+            message += f"\n🎯 Active Strategy:\n"
+            message += f"  {self.trader.current_strategy.get_name()}\n"
+
+        await update.message.reply_text(message)
+
+    async def cmd_trader_stats(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Trading statistics"""
+        if not self.trader:
+            return
+
+        # Get strategy performance
+        strategies = self.trader.strategy_performance
+
+        message = f"📊 Trading Statistics\n\n"
+        message += f"Total strategies tested: {len(strategies)}\n\n"
+
+        if strategies:
+            message += "**Strategy Performance:**\n"
+            # Sort by Sharpe ratio
+            sorted_strategies = sorted(
+                strategies.items(),
+                key=lambda x: x[1].sharpe_ratio,
+                reverse=True
+            )
+
+            for name, result in sorted_strategies[:5]:  # Top 5
+                message += f"\n• {name}\n"
+                message += f"  Return: {result.total_return*100:.2f}%\n"
+                message += f"  Sharpe: {result.sharpe_ratio:.2f}\n"
+                message += f"  Max DD: {result.max_drawdown*100:.2f}%\n"
+                message += f"  Win Rate: {result.win_rate*100:.1f}%\n"
+                message += f"  Trades: {result.total_trades}\n"
+        else:
+            message += "No strategies tested yet.\n"
+            message += "Trader will generate strategies automatically."
+
+        await update.message.reply_text(message)
+
+    async def cmd_trader_strategies(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """List strategies"""
+        if not self.trader:
+            return
+
+        from pathlib import Path
+
+        strategies_dir = Path(__file__).parent.parent / "trading" / "strategies"
+
+        if not strategies_dir.exists():
+            await update.message.reply_text("📁 No strategies directory found")
+            return
+
+        strategy_files = list(strategies_dir.glob("*.py"))
+
+        if not strategy_files:
+            await update.message.reply_text("📝 No strategies generated yet")
+            return
+
+        message = f"📝 Generated Strategies ({len(strategy_files)}):\n\n"
+
+        for filepath in sorted(strategy_files, reverse=True)[:10]:  # Last 10
+            name = filepath.stem
+            message += f"• {name}\n"
+
+            # Check if we have performance data
+            if name in self.trader.strategy_performance:
+                result = self.trader.strategy_performance[name]
+                message += f"  Sharpe: {result.sharpe_ratio:.2f}\n"
+                message += f"  Return: {result.total_return*100:.2f}%\n"
+
+        await update.message.reply_text(message)
+
+    async def cmd_trader_market(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Current market data"""
+        if not self.trader:
+            return
+
+        # Connect to MT5
+        if not self.trader.mt5.connect():
+            await update.message.reply_text("❌ Niet verbonden met MT5")
+            return
+
+        # Get current price
+        price = self.trader.mt5.get_current_price()
+
+        # Get recent bars
+        bars = self.trader.mt5.get_bars(count=100)
+
+        if not price or bars is None:
+            await update.message.reply_text("❌ Kon market data niet ophalen")
+            return
+
+        # Calculate some metrics
+        current_close = bars['close'].iloc[-1]
+        sma_20 = bars['close'].rolling(20).mean().iloc[-1]
+        sma_50 = bars['close'].rolling(50).mean().iloc[-1]
+        atr = self.trader.risk_mgr.calculate_atr(bars)
+
+        message = f"📊 MNQ Market Data\n\n"
+        message += f"💵 Price:\n"
+        message += f"  Bid: ${price['bid']:.2f}\n"
+        message += f"  Ask: ${price['ask']:.2f}\n"
+        message += f"  Spread: ${price['ask'] - price['bid']:.2f}\n\n"
+
+        message += f"📈 Technical:\n"
+        message += f"  Close: ${current_close:.2f}\n"
+        message += f"  SMA(20): ${sma_20:.2f}\n"
+        message += f"  SMA(50): ${sma_50:.2f}\n"
+        message += f"  ATR(14): ${atr:.2f}\n\n"
+
+        # Trend
+        if current_close > sma_20 > sma_50:
+            message += f"📊 Trend: ⬆️ Uptrend\n"
+        elif current_close < sma_20 < sma_50:
+            message += f"📊 Trend: ⬇️ Downtrend\n"
+        else:
+            message += f"📊 Trend: ↔️ Ranging\n"
+
+        await update.message.reply_text(message)
+
+    # ===== END TRADER COMMANDS =====
 
     async def handle_photo(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle foto uploads"""
