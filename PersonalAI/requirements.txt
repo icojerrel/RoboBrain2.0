@@ -16,6 +16,11 @@ pillow>=11.0.0
 qdrant-client>=1.7.0  # Vector database for long-term memory
 flask>=3.0.0  # Dashcam bridge server
 
+# Trading (Autonomous Trader)
+MetaTrader5>=5.0.0  # MT5 Python integration for MNQ futures
+pandas>=2.0.0  # Data manipulation for backtesting
+numpy>=1.26.0  # Already listed but needed for trading too
+
 # Basis requirements zijn in hoofdproject
 # Zorg dat je eerst de hoofdproject requirements installeert:
 # pip install -r ../requirements.txt
