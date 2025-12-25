@@ -47,6 +47,36 @@ Complete autonomous trading systeem dat zelf winstgevende strategies genereert, 
 
 ---
 
+## 📱 Telegram Integration
+
+**Control trading via Telegram!**
+
+The autonomous trader is now integrated with the PersonalAI Telegram Bot:
+
+```bash
+# Start Telegram bot (includes trader)
+python interfaces/telegram_bot.py
+```
+
+**Telegram Commands:**
+- `/trader_help` - Trading commands help
+- `/trader_start [paper|live]` - Start autonomous trader
+- `/trader_stop` - Stop trader
+- `/trader_status` - Current status, positions, P&L
+- `/trader_stats` - Performance statistics
+- `/trader_strategies` - List generated strategies
+- `/trader_market` - Current MNQ market data
+
+**Features:**
+✅ Real-time status updates via Telegram
+✅ Start/stop trading remotely
+✅ Monitor positions and P&L
+✅ View strategy performance
+✅ Live market data with technical indicators
+✅ Safe paper mode by default
+
+---
+
 ## 🚀 Quick Start
 
 ### **1. Install Dependencies**
@@ -578,6 +608,28 @@ docker run -d -p 6333:6333 qdrant/qdrant
 ---
 
 ## 🚀 Advanced Usage
+
+### **Unified Launcher**
+
+Start all PersonalAI systems with one command:
+
+```bash
+# Start everything (worker + trader + telegram + web + camera)
+python run.py all
+
+# Start just autonomous systems (worker + trader)
+python run.py autonomous
+
+# Start just the trader
+python run.py trader --paper  # Safe paper mode
+python run.py trader --live   # Live trading (use with caution!)
+
+# Start just Telegram bot
+python run.py telegram
+
+# Start just worker
+python run.py worker
+```
 
 ### **Custom Strategy Template**
 
