@@ -28,7 +28,8 @@ def main():
 
     parser = argparse.ArgumentParser(description='PersonalAI Unified Launcher')
     parser.add_argument('mode', choices=[
-        'worker',      # Autonomous worker
+        'worker',      # Autonomous worker (basic)
+        'enhanced',    # Enhanced autonomous worker (vision+reasoning)
         'trader',      # Autonomous trader
         'telegram',    # Telegram bot
         'web',         # Web dashboard
@@ -49,6 +50,9 @@ def main():
 
     if args.mode == 'worker':
         start_worker()
+
+    elif args.mode == 'enhanced':
+        start_enhanced_worker()
 
     elif args.mode == 'trader':
         mode = 'live' if args.live else 'paper'
@@ -71,11 +75,20 @@ def main():
 
 
 def start_worker():
-    """Start autonomous worker"""
-    logger.info("Starting Autonomous Worker...")
+    """Start basic autonomous worker"""
+    logger.info("Starting Autonomous Worker (basic)...")
     subprocess.run([
         sys.executable,
         'core/autonomous_worker_standalone.py'
+    ])
+
+
+def start_enhanced_worker():
+    """Start enhanced autonomous worker with vision+reasoning"""
+    logger.info("Starting Enhanced Autonomous Worker (vision+reasoning)...")
+    subprocess.run([
+        sys.executable,
+        'core/enhanced_autonomous_worker.py'
     ])
 
 
