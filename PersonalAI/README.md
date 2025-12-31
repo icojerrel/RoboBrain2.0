@@ -1,23 +1,36 @@
-# 🤖 PersonalAI - Jouw Persoonlijke AI Assistent
+# 🤖 PersonalAI - Advanced Embodied AI System
 
-Een krachtige persoonlijke AI assistent gebouwd op **RoboBrain 2.0** met multi-modale vision capabilities, conversatie geheugen, en meerdere interfaces (Telegram + Web).
+**Intelligence = Vision + Reasoning + Memory + Autonomy**
 
-## ✨ Functies
+Een geavanceerd embodied AI systeem gebouwd op **RoboBrain 2.0** met vision, autonomous decision-making, memory systems, en multi-modal perception voor intelligente robotica en assistive AI toepassingen.
 
-### 🎯 Core Features
-- **📸 Vision Analyse**: Begrijp en analyseer afbeeldingen met state-of-the-art AI
-- **🧠 Thinking Mode**: Zie hoe de AI redeneert (chain-of-thought)
-- **💬 Geheugen**: Onthoudt gesprekken en leert je voorkeuren
-- **🌐 Multi-Interface**: Telegram bot + Web dashboard
-- **🔬 X-ray Module**: Educatieve röntgenfoto analyse
-- **🤖 Robotica**: Affordance, trajectory planning, pointing
+## ✨ Core Capabilities
 
-### 📋 Vision Tasks
-1. **General** - Algemene visuele vraag-en-antwoord
-2. **Pointing** - Wijs specifieke punten aan in afbeeldingen
-3. **Grounding** - Vind objecten met bounding boxes
-4. **Affordance** - Voorspel grijpgebieden voor robots
-5. **Trajectory** - Plan bewegingstrajecten
+### 🧠 Autonomous Intelligence
+- **Vision + Reasoning**: RoboBrain 2.0 integration voor spatial reasoning
+- **Autonomous Brain**: 6-step decision loop (PERCEIVE→RECALL→REASON→DECIDE→ACT→REFLECT)
+- **Enhanced Worker**: Multi-modal sensing met vision-based autonomous operation
+- **Memory Systems**: Dual-store (short-term SQLite + long-term Qdrant)
+- **Goal-Directed**: Priority-based goal queue met autonomous completion
+
+### 📸 Vision & Spatial Reasoning
+1. **General** - Visual question answering met thinking mode
+2. **Pointing** - Identify specific points in images
+3. **Grounding** - Object detection with bounding boxes
+4. **Affordance** - Predict actionable areas for robot manipulation
+5. **Trajectory** - Plan motion paths for reaching goals
+
+### 🤖 Specialized Systems
+- **Autonomous Trading**: Self-generating strategies, backtesting, MT5 integration
+- **Smart Dashcam**: Incident detection, ANPR, lane departure warnings
+- **Drone Simulation**: Waypoint planning, mission execution
+- **Telegram Bot**: Remote control via messaging (vision, trading, dashcam)
+
+### 💾 Memory & Learning
+- **Short-term**: Last 50 entries (SQLite) - <1ms recall
+- **Long-term**: Semantic search (Qdrant) - unlimited storage
+- **Learning Types**: Lessons, patterns, discoveries, preferences
+- **Auto-learning**: Stores successes (importance ≥8) and failures (≥7)
 
 ## 🚀 Installatie
 
@@ -70,7 +83,81 @@ ROBOBRAIN_MODEL = "BAAI/RoboBrain2.0-7B"  # of 3B/32B
 3. Kopieer de bot token die je krijgt
 4. Plak de token in `.env` of `config.py`
 
-## 💻 Gebruik
+---
+
+## ⚡ Quick Start
+
+### Unified Launcher
+
+PersonalAI includes een unified launcher voor alle systemen:
+
+```bash
+# Enhanced autonomous worker (vision + reasoning)
+python run.py enhanced
+
+# Basic autonomous worker
+python run.py worker
+
+# Autonomous trader (paper mode - safe)
+python run.py trader --paper
+
+# Telegram bot (all capabilities)
+python run.py telegram
+
+# All systems at once
+python run.py all
+
+# Autonomous mode (worker + trader)
+python run.py autonomous
+```
+
+### Python API
+
+```python
+from core.personalai import get_personalai
+
+# Initialize PersonalAI
+ai = get_personalai(
+    enable_autonomous=True,
+    enable_vision=True,
+    enable_memory=True
+)
+
+# Vision analysis
+result = ai.analyze_image("scene.jpg", "What's happening here?")
+
+# Find objects
+detection = ai.find_object("scene.jpg", "red cup")
+
+# Start autonomous mode
+ai.start_autonomous_mode(goals=[
+    "Monitor environment for safety issues",
+    "Learn patterns and optimize performance"
+])
+
+# Set new goal
+ai.set_goal("Detect anomalies in sensor data", priority=9)
+
+# Memory
+ai.remember("Important discovery", importance=9, tags=["critical"])
+memories = ai.recall("safety procedures")
+
+# Reasoning
+decision = ai.make_decision(
+    options=["Action A", "Action B"],
+    criteria="Safety and efficiency",
+    context_image="scene.jpg"
+)
+
+# Status
+status = ai.get_status()
+print(f"Mode: {status['mode']}")
+print(f"Success rate: {status['brain_stats']['success_rate']:.1%}")
+```
+
+---
+
+## 💻 Detailed Usage
 
 ### Test het Systeem
 ```bash
@@ -214,6 +301,48 @@ PersonalAI/
 ├── requirements.txt      # Python packages
 └── README.md             # Deze file
 ```
+
+---
+
+## 📚 Documentation
+
+### Core Documentation
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Complete system architecture
+  - Component diagrams
+  - Decision loop flows
+  - Memory architecture
+  - Performance characteristics
+  - Extension points
+  - Best practices
+
+- **[AUTONOMOUS.md](AUTONOMOUS.md)** - Autonomous mode guide
+  - How autonomous mode works
+  - Memory systems
+  - Decision loop details
+  - Setup and configuration
+  - Examples and use cases
+
+- **[TRADING.md](TRADING.md)** - Autonomous trading system
+  - MT5 integration guide
+  - Strategy generation
+  - Backtesting framework
+  - Risk management
+  - Telegram trading commands
+
+- **[CLAUDE.md](../CLAUDE.md)** - AI Assistant guide
+  - For AI assistants working with this codebase
+  - Project overview
+  - Development guidelines
+  - Best practices
+
+### Quick References
+- Enhanced Worker: See `core/enhanced_autonomous_worker.py`
+- Autonomous Brain: See `core/autonomous_brain.py`
+- Unified API: See `core/personalai.py`
+- Telegram Commands: Run `/help` in bot
+- Trading Commands: Run `/trader_help` in bot
+
+---
 
 ## 🔒 Privacy & Veiligheid
 
