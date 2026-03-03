@@ -1,71 +1,44 @@
 # PersonalAI Docker Container
-# Production-ready container voor PersonalAI
+# Production-ready containerized deployment
 
-FROM nvidia/cuda:12.4.0-runtime-ubuntu22.04
+FROM python:3.10-slim
 
-# Metadata
-LABEL maintainer="PersonalAI"
-LABEL description="Personal AI Assistant powered by RoboBrain 2.0"
-LABEL version="1.0"
-
-# Omgevingsvariabelen
-ENV DEBIAN_FRONTEND=noninteractive
-ENV PYTHONUNBUFFERED=1
-ENV CUDA_HOME=/usr/local/cuda
-
-# Installeer system dependencies
-RUN apt-get update && apt-get install -y \
-    python3.10 \
-    python3.10-venv \
-    python3-pip \
-    git \
-    wget \
-    curl \
-    libopencv-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Maak symlink voor python
-RUN ln -s /usr/bin/python3.10 /usr/bin/python
-
-# Werk directory
+# Set working directory
 WORKDIR /app
 
-# Kopieer requirements
-COPY requirements.txt /app/PersonalAI/requirements.txt
-COPY ../requirements.txt /app/requirements.txt
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Installeer Python dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r /app/requirements.txt && \
-    pip install --no-cache-dir -r /app/PersonalAI/requirements.txt
+# Copy requirements
+COPY requirements.txt .
+COPY ../requirements.txt ./parent_requirements.txt
 
-# Kopieer RoboBrain code
-COPY ../inference.py /app/inference.py
-COPY ../assets /app/assets
+# Install Python dependencies
+RUN pip install --no-cache-dir -r parent_requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Kopieer PersonalAI applicatie
-COPY . /app/PersonalAI
+# Copy application code
+COPY . .
 
-# Maak data directories
-RUN mkdir -p /app/PersonalAI/data/cache \
-             /app/PersonalAI/data/memory \
-             /app/result
+# Create necessary directories
+RUN mkdir -p /root/.personalai/memory \
+    /root/.personalai/state \
+    /root/.personalai/logs \
+    /app/data
 
-# Set permissions
-RUN chmod +x /app/PersonalAI/main.py
-
-# Working directory voor runtime
-WORKDIR /app/PersonalAI
-
-# Expose poorten
-EXPOSE 7860
+# Environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PERSONALAI_ENV=production
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python main.py status || exit 1
+HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
+    CMD python -c "from core.monitoring import get_monitoring_system; m=get_monitoring_system(); status=m.get_system_status(); exit(0 if status['overall_status']=='healthy' else 1)"
 
-# Default command (kan overridden worden)
-CMD ["python", "main.py", "telegram"]
+# Expose ports (if needed for web interface)
+EXPOSE 8000
 
-# Volume voor persistent data
-VOLUME ["/app/PersonalAI/data", "/root/.cache/huggingface"]
+# Default command (can be overridden)
+CMD ["python", "run.py", "enhanced"]

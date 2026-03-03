@@ -1,98 +1,42 @@
 version: '3.8'
 
 services:
-  personalai-telegram:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  personalai:
+    build: .
     image: personalai:latest
-    container_name: personalai-telegram
+    container_name: personalai
     restart: unless-stopped
-
-    # GPU support (NVIDIA)
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-
-    # Environment variables
-    env_file:
-      - .env
-
+    
     environment:
-      - CUDA_VISIBLE_DEVICES=0
-
-    # Volumes voor persistent data
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - ROBOBRAIN_MODEL=BAAI/RoboBrain2.0-7B
+      - PERSONALAI_ENV=production
+    
     volumes:
-      - ./data:/app/PersonalAI/data
-      - huggingface-cache:/root/.cache/huggingface
-      - ./result:/app/result
-
-    # Command
-    command: python main.py telegram
-
-    # Logging
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-    # Health check
+      - ./data:/app/data
+      - ~/.personalai:/root/.personalai
+    
+    ports:
+      - "8000:8000"
+    
+    command: python run.py enhanced
+    
     healthcheck:
-      test: ["CMD", "python", "main.py", "status"]
-      interval: 30s
+      test: ["CMD", "python", "-c", "from core.monitoring import get_monitoring_system; m=get_monitoring_system(); exit(0 if m.get_system_status()['overall_status']=='healthy' else 1)"]
+      interval: 60s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 30s
 
-  personalai-web:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: personalai:latest
-    container_name: personalai-web
+  # Optional: Qdrant for long-term memory
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: personalai-qdrant
     restart: unless-stopped
-
-    # GPU support
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-
-    # Environment
-    env_file:
-      - .env
-
-    environment:
-      - CUDA_VISIBLE_DEVICES=0
-
-    # Volumes
-    volumes:
-      - ./data:/app/PersonalAI/data
-      - huggingface-cache:/root/.cache/huggingface
-      - ./result:/app/result
-
-    # Ports
     ports:
-      - "7860:7860"
-
-    # Command
-    command: python main.py web
-
-    # Logging
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      - "6333:6333"
+    volumes:
+      - qdrant_storage:/qdrant/storage
 
 volumes:
-  huggingface-cache:
-    driver: local
+  qdrant_storage:
